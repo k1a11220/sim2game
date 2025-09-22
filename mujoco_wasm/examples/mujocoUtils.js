@@ -30,10 +30,15 @@ export function setupGUI(parentContext) {
   // Add scene selection dropdown.
   let reload = reloadFunc.bind(parentContext);
   parentContext.gui.add(parentContext.params, 'scene', {
-    "Humanoid": "humanoid.xml", "Cassie": "agility_cassie/scene.xml",
-    "Hammock": "hammock.xml", "Balloons": "balloons.xml", "Hand": "shadow_hand/scene_right.xml",
-    "Flag": "flag.xml", "Mug": "mug.xml", "Tendon": "model_with_tendon.xml",
-    "Skydio X2": "skydio_x2/scene.xml"
+    "Skydio X2": "skydio_x2/scene.xml",
+    "Humanoid": "humanoid.xml",
+    "Cassie": "agility_cassie/scene.xml",
+    "Hammock": "hammock.xml",
+    "Balloons": "balloons.xml",
+    "Hand": "shadow_hand/scene_right.xml",
+    "Flag": "flag.xml",
+    "Mug": "mug.xml",
+    "Tendon": "model_with_tendon.xml"
   }).name('Example Scene').onChange(reload);
 
   // Add a help menu.

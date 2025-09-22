@@ -1,7 +1,7 @@
 
 import * as THREE           from 'three';
-import { GUI              } from '../node_modules/three/examples/jsm/libs/lil-gui.module.min.js';
-import { OrbitControls    } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
+import { GUI              } from 'three/addons/libs/lil-gui.module.min.js';
+import { OrbitControls    } from 'three/addons/controls/OrbitControls.js';
 import { DragStateManager } from './utils/DragStateManager.js';
 import { InputManager } from './utils/InputManager.js';
 import { setupGUI, downloadExampleScenesFolder, loadSceneFromURL, getPosition, getQuaternion, toMujocoPos, standardNormal } from './mujocoUtils.js';
@@ -57,13 +57,12 @@ export class MuJoCoDemo {
     this.scene = new THREE.Scene();
     this.scene.name = 'scene';
 
-    this.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 100 );
+    this.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
     this.camera.name = 'PerspectiveCamera';
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(0.15, 0.25, 0.35);
-    this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5 );
+    this.scene.background = new THREE.Color(0.85, 0.85, 0.88);
 
     this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.1 );
     this.ambientLight.name = 'AmbientLight';

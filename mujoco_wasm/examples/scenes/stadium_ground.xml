@@ -1,0 +1,18 @@
+<mujoco model="stadium_ground">
+  <asset>
+    <texture type="2d" name="stadium_floor_tex" builtin="checker" width="1024" height="1024"
+      rgb1="0.8 0.8 0.82" rgb2="0.7 0.7 0.72" mark="edge" markrgb="0.9 0.9 0.9"/>
+    <material name="stadium_floor" texture="stadium_floor_tex" texuniform="true" texrepeat="80 80"
+      reflectance="0.05"/>
+    <material name="stadium_wall" rgba="0.6 0.6 0.62 1"/>
+  </asset>
+
+  <worldbody>
+    <geom name="stadium_floor" type="plane" size="120 120 10" material="stadium_floor"
+      friction="1 0.1 0.05"/>
+    <geom name="stadium_wall_north" type="box" size="60 1 3" pos="0 40 3" material="stadium_wall"/>
+    <geom name="stadium_wall_south" type="box" size="60 1 3" pos="0 -40 3" material="stadium_wall"/>
+    <geom name="stadium_wall_east" type="box" size="1 40 3" pos="60 0 3" material="stadium_wall"/>
+    <geom name="stadium_wall_west" type="box" size="1 40 3" pos="-60 0 3" material="stadium_wall"/>
+  </worldbody>
+</mujoco>

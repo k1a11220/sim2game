@@ -3,6 +3,7 @@ import * as THREE           from 'three';
 import { GUI              } from '../node_modules/three/examples/jsm/libs/lil-gui.module.min.js';
 import { OrbitControls    } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
 import { DragStateManager } from './utils/DragStateManager.js';
+import { InputManager } from './utils/InputManager.js';
 import { setupGUI, downloadExampleScenesFolder, loadSceneFromURL, getPosition, getQuaternion, toMujocoPos, standardNormal } from './mujocoUtils.js';
 import   load_mujoco        from '../dist/mujoco_wasm.js';
 
@@ -35,11 +36,10 @@ export class MuJoCoDemo {
     this.tmpVec  = new THREE.Vector3();
     this.tmpQuat = new THREE.Quaternion();
     this.updateGUICallbacks = [];
-    this.inputState = {};
-    this.boundKeyDown = this.handleKeyDown.bind(this);
-    this.boundKeyUp   = this.handleKeyUp.bind(this);
-    window.addEventListener('keydown', this.boundKeyDown, false);
-    window.addEventListener('keyup', this.boundKeyUp, false);
+    this.inputManager = new InputManager({
+      allowedKeys: Array.from(CONTROL_KEYS),
+      allowWithinSelectors: ['.dg']
+    });
 
     this.ctrlTargets = new Float32Array(this.simulation.ctrl.length);
     this.thrustIndices = [];
@@ -77,6 +77,16 @@ export class MuJoCoDemo {
     this.renderer.setAnimationLoop( this.render.bind(this) );
 
     this.container.appendChild( this.renderer.domElement );
+
+    const canvas = this.renderer.domElement;
+    if (canvas.tabIndex === undefined || canvas.tabIndex < 0) {
+      canvas.tabIndex = 0;
+    }
+    const focusCanvas = () => canvas.focus();
+    canvas.addEventListener('mousedown', focusCanvas);
+    canvas.addEventListener('pointerdown', focusCanvas);
+    canvas.addEventListener('touchstart', focusCanvas, { passive: true });
+    canvas.focus();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0.7, 0);
@@ -285,7 +295,9 @@ export class MuJoCoDemo {
     this.thrustIndices = [];
     this.skydioControlConfigured = false;
     this.thrustRange = { min: 0.0, max: 13.0 };
-    this.inputState = {};
+    if (this.inputManager) {
+      this.inputManager.reset();
+    }
   }
 
   shouldApplySkydioControl() {
@@ -326,12 +338,17 @@ export class MuJoCoDemo {
   }
 
   applySkydioKeyboardControl() {
-    if (!this.shouldApplySkydioControl()) { return; }
+    const manager = this.inputManager;
+    const active = this.shouldApplySkydioControl();
+    if (manager) {
+      manager.setEnabled(active);
+    }
+    if (!active) { return; }
     if (!this.skydioControlConfigured && !this.configureSkydioActuators()) { return; }
 
-    const ascendInput = (this.inputState['Space'] ? 1 : 0) - (this.inputState['KeyZ'] ? 1 : 0);
-    const pitchInput  = (this.inputState['KeyW']  ? 1 : 0) - (this.inputState['KeyS']  ? 1 : 0);
-    const rollInput   = (this.inputState['KeyD']  ? 1 : 0) - (this.inputState['KeyA']  ? 1 : 0);
+    const ascendInput = (manager?.isPressed('Space') ? 1 : 0) - (manager?.isPressed('KeyZ') ? 1 : 0);
+    const pitchInput  = (manager?.isPressed('KeyW')  ? 1 : 0) - (manager?.isPressed('KeyS')  ? 1 : 0);
+    const rollInput   = (manager?.isPressed('KeyD')  ? 1 : 0) - (manager?.isPressed('KeyA')  ? 1 : 0);
 
     const ascendOffset = ascendInput * this.ascendGain;
     const pitchOffset  = pitchInput  * this.pitchGain;
@@ -353,30 +370,6 @@ export class MuJoCoDemo {
     }
   }
 
-  shouldCaptureKey(event) {
-    if (event.defaultPrevented) { return false; }
-    const target = event.target;
-    if (target && target.tagName) {
-      const tag = target.tagName.toUpperCase();
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') { return false; }
-      if (target.isContentEditable) { return false; }
-    }
-    if (!CONTROL_KEYS.has(event.code)) { return false; }
-    if (!this.shouldApplySkydioControl()) { return false; }
-    return true;
-  }
-
-  handleKeyDown(event) {
-    if (!this.shouldCaptureKey(event)) { return; }
-    this.inputState[event.code] = true;
-    event.preventDefault();
-  }
-
-  handleKeyUp(event) {
-    if (!this.shouldCaptureKey(event)) { return; }
-    delete this.inputState[event.code];
-    event.preventDefault();
-  }
 }
 
 let demo = new MuJoCoDemo();

@@ -7,6 +7,9 @@ export async function reloadFunc() {
   this.scene.remove(this.scene.getObjectByName("MuJoCo Root"));
   [this.model, this.state, this.simulation, this.bodies, this.lights] =
     await loadSceneFromURL(this.mujoco, this.params.scene, this);
+  if (typeof this.resetCtrlTargets === 'function') {
+    this.resetCtrlTargets();
+  }
   this.simulation.forward();
   for (let i = 0; i < this.updateGUICallbacks.length; i++) {
     this.updateGUICallbacks[i](this.model, this.simulation, this.params);
@@ -133,7 +136,7 @@ export function setupGUI(parentContext) {
   //  Under "Simulation" folder.
   //  Name: "Pause Simulation".
   //  When paused, a "pause" text in white is displayed in the top left corner.
-  //  Can also be triggered by pressing the spacebar.
+  //  Can also be triggered by pressing the P key.
   const pauseSimulation = simulationFolder.add(parentContext.params, 'paused').name('Pause Simulation');
   pauseSimulation.onChange((value) => {
     if (value) {
@@ -150,14 +153,21 @@ export function setupGUI(parentContext) {
     }
   });
   document.addEventListener('keydown', (event) => {
-    if (event.code === 'Space') {
+    if (event.code === 'KeyP') {
       parentContext.params.paused = !parentContext.params.paused;
       pauseSimulation.setValue(parentContext.params.paused);
       event.preventDefault();
     }
   });
   actionInnerHTML += 'Play / Pause<br>';
+  keyInnerHTML += 'P<br>';
+
   keyInnerHTML += 'Space<br>';
+  actionInnerHTML += 'Skydio thrust up<br>';
+  keyInnerHTML += 'Z<br>';
+  actionInnerHTML += 'Skydio thrust down<br>';
+  keyInnerHTML += 'W / A / S / D<br>';
+  actionInnerHTML += 'Skydio tilt (F/L/B/R)<br>';
 
   // Add reload model button.
   // Parameters:

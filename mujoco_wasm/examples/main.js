@@ -6,6 +6,10 @@ import { DragStateManager } from './utils/DragStateManager.js';
 import { setupGUI, downloadExampleScenesFolder, loadSceneFromURL, getPosition, getQuaternion, toMujocoPos, standardNormal } from './mujocoUtils.js';
 import   load_mujoco        from '../dist/mujoco_wasm.js';
 
+const CONTROL_KEYS = new Set(['Space', 'KeyZ', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
+const PITCH_SIGNS = [1, 1, -1, -1];
+const ROLL_SIGNS  = [1, -1, -1, 1];
+
 // Load the MuJoCo Module
 const mujoco = await load_mujoco();
 
@@ -31,6 +35,21 @@ export class MuJoCoDemo {
     this.tmpVec  = new THREE.Vector3();
     this.tmpQuat = new THREE.Quaternion();
     this.updateGUICallbacks = [];
+    this.inputState = {};
+    this.boundKeyDown = this.handleKeyDown.bind(this);
+    this.boundKeyUp   = this.handleKeyUp.bind(this);
+    window.addEventListener('keydown', this.boundKeyDown, false);
+    window.addEventListener('keyup', this.boundKeyUp, false);
+
+    this.ctrlTargets = new Float32Array(this.simulation.ctrl.length);
+    this.thrustIndices = [];
+    this.skydioControlConfigured = false;
+    this.hoverThrust = 3.2495625;
+    this.ascendGain = 1.2;
+    this.pitchGain = 0.35;
+    this.rollGain = 0.35;
+    this.controlSmoothing = 0.25;
+    this.thrustRange = { min: 0.0, max: 13.0 };
 
     this.container = document.createElement( 'div' );
     document.body.appendChild( this.container );
@@ -72,6 +91,7 @@ export class MuJoCoDemo {
 
     // Initialize the Drag State Manager.
     this.dragStateManager = new DragStateManager(this.scene, this.renderer, this.camera, this.container.parentElement, this.controls);
+    this.resetCtrlTargets();
   }
 
   async init() {
@@ -81,6 +101,7 @@ export class MuJoCoDemo {
     // Initialize the three.js Scene using the .xml Model in initialScene
     [this.model, this.state, this.simulation, this.bodies, this.lights] =  
       await loadSceneFromURL(mujoco, initialScene, this);
+    this.resetCtrlTargets();
 
     this.gui = new GUI();
     setupGUI(this);
@@ -102,6 +123,7 @@ export class MuJoCoDemo {
       let timestep = this.model.getOptions().timestep;
       if (timeMS - this.mujoco_time > 35.0) { this.mujoco_time = timeMS; }
       while (this.mujoco_time < timeMS) {
+        this.applySkydioKeyboardControl();
 
         // Jitter the control state with gaussian random noise
         if (this.params["ctrlnoisestd"] > 0.0) {
@@ -255,6 +277,108 @@ export class MuJoCoDemo {
 
     // Render!
     this.renderer.render( this.scene, this.camera );
+  }
+
+  resetCtrlTargets() {
+    if (this.simulation && this.simulation.ctrl) {
+      this.ctrlTargets = new Float32Array(this.simulation.ctrl.length);
+    } else {
+      this.ctrlTargets = new Float32Array(0);
+    }
+    this.thrustIndices = [];
+    this.skydioControlConfigured = false;
+    this.thrustRange = { min: 0.0, max: 13.0 };
+    this.inputState = {};
+  }
+
+  shouldApplySkydioControl() {
+    return typeof this.params.scene === 'string' && this.params.scene.includes('skydio_x2');
+  }
+
+  configureSkydioActuators() {
+    if (!this.simulation || !this.simulation.ctrl) { return false; }
+    const ctrl = this.simulation.ctrl;
+    if (ctrl.length < 4) { return false; }
+
+    this.thrustIndices = [0, 1, 2, 3];
+    if (this.model && this.model.actuator_ctrlrange && this.model.actuator_ctrlrange.length >= 8) {
+      const ranges = this.model.actuator_ctrlrange;
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (let i = 0; i < this.thrustIndices.length; i++) {
+        const idx = this.thrustIndices[i];
+        const lo = ranges[(idx * 2) + 0];
+        const hi = ranges[(idx * 2) + 1];
+        if (Number.isFinite(lo)) { min = Math.min(min, lo); }
+        if (Number.isFinite(hi)) { max = Math.max(max, hi); }
+      }
+      if (min < max) {
+        this.thrustRange.min = min;
+        this.thrustRange.max = max;
+      }
+    }
+
+    this.ctrlTargets = new Float32Array(this.thrustIndices.length);
+    this.ctrlTargets.fill(this.hoverThrust);
+    for (let i = 0; i < this.thrustIndices.length; i++) {
+      ctrl[this.thrustIndices[i]] = this.hoverThrust;
+    }
+
+    this.skydioControlConfigured = true;
+    return true;
+  }
+
+  applySkydioKeyboardControl() {
+    if (!this.shouldApplySkydioControl()) { return; }
+    if (!this.skydioControlConfigured && !this.configureSkydioActuators()) { return; }
+
+    const ascendInput = (this.inputState['Space'] ? 1 : 0) - (this.inputState['KeyZ'] ? 1 : 0);
+    const pitchInput  = (this.inputState['KeyW']  ? 1 : 0) - (this.inputState['KeyS']  ? 1 : 0);
+    const rollInput   = (this.inputState['KeyD']  ? 1 : 0) - (this.inputState['KeyA']  ? 1 : 0);
+
+    const ascendOffset = ascendInput * this.ascendGain;
+    const pitchOffset  = pitchInput  * this.pitchGain;
+    const rollOffset   = rollInput   * this.rollGain;
+
+    for (let i = 0; i < this.thrustIndices.length; i++) {
+      const target = this.hoverThrust + ascendOffset + (pitchOffset * PITCH_SIGNS[i]) + (rollOffset * ROLL_SIGNS[i]);
+      const clamped = Math.min(this.thrustRange.max, Math.max(this.thrustRange.min, target));
+      this.ctrlTargets[i] = clamped;
+    }
+
+    const ctrl = this.simulation.ctrl;
+    for (let i = 0; i < this.thrustIndices.length; i++) {
+      const idx = this.thrustIndices[i];
+      const current = ctrl[idx];
+      const desired = this.ctrlTargets[i];
+      const next = current + (desired - current) * this.controlSmoothing;
+      ctrl[idx] = Math.min(this.thrustRange.max, Math.max(this.thrustRange.min, next));
+    }
+  }
+
+  shouldCaptureKey(event) {
+    if (event.defaultPrevented) { return false; }
+    const target = event.target;
+    if (target && target.tagName) {
+      const tag = target.tagName.toUpperCase();
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') { return false; }
+      if (target.isContentEditable) { return false; }
+    }
+    if (!CONTROL_KEYS.has(event.code)) { return false; }
+    if (!this.shouldApplySkydioControl()) { return false; }
+    return true;
+  }
+
+  handleKeyDown(event) {
+    if (!this.shouldCaptureKey(event)) { return; }
+    this.inputState[event.code] = true;
+    event.preventDefault();
+  }
+
+  handleKeyUp(event) {
+    if (!this.shouldCaptureKey(event)) { return; }
+    delete this.inputState[event.code];
+    event.preventDefault();
   }
 }
 

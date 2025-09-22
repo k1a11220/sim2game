@@ -1,0 +1,29 @@
+{
+  "name": "mujoco_wasm",
+  "version": "0.0.2",
+  "description": "Run MuJoCo simulations in browser",
+  "main": "dist/mujoco_wasm.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zalo/mujoco_wasm.git"
+  },
+  "keywords": [
+    "mujoco",
+    "wasm"
+  ],
+  "author": "Sergei Surovtsev and Johnathon Selstad",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zalo/mujoco_wasm/issues"
+  },
+  "homepage": "https://github.com/zalo/mujoco_wasm#readme",
+  "dependencies": {
+    "three": "^0.150.1"
+  }
+}

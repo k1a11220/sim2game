@@ -1,0 +1,5 @@
+newmtl phong3SG
+Ka 1.000000 1.000000 1.000000
+Kd 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+map_Kd X2_lowpoly_texture_SpinningProps_1024.png

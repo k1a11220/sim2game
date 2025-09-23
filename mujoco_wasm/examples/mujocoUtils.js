@@ -31,6 +31,9 @@ export function setupGUI(parentContext) {
   let reload = reloadFunc.bind(parentContext);
   parentContext.gui.add(parentContext.params, 'scene', {
     "Skydio X2": "skydio_x2/scene.xml",
+    "Unitree Go1": "unitree_go1/scene.xml",
+    "Drone + Go1": "combined_drone_spot/scene.xml",
+    "Boston Dynamics Spot": "boston_dynamics_spot/spot.xml",
     "Humanoid": "humanoid.xml",
     "Cassie": "agility_cassie/scene.xml",
     "Hammock": "hammock.xml",
@@ -628,6 +631,9 @@ const DEFAULT_SCENE_FILES = [
   "skydio_x2/x2.png",
   "skydio_x2/x2.xml",
   "slider_crank.xml",
+  "finc/finc.obj",
+  "finc/finc.mtl",
+  "finc/finc.xml",
 ];
 
 export async function downloadExampleScenesFolder(mujoco) {

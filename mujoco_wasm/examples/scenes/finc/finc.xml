@@ -1,0 +1,12 @@
+<mujoco model="finc_map">
+  <compiler meshdir="" texturedir=""/>
+
+  <asset>
+    <mesh name="finc_map" file="finc.obj" scale="0.1 0.1 0.1"/>
+    <material name="finc_material" rgba="0.8 0.8 0.8 1"/>
+  </asset>
+
+  <worldbody>
+    <geom name="finc_map" type="mesh" mesh="finc_map" material="finc_material" pos="0 0 0"/>
+  </worldbody>
+</mujoco>

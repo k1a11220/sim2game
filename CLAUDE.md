@@ -27,6 +27,7 @@ cd frontend
 npm install
 npm run dev        # Development server with Turbopack
 npm run build      # Production build with Turbopack
+npm run start      # Start production server
 npm run lint       # Run ESLint
 ```
 
@@ -37,10 +38,16 @@ npm install
 npm run build      # Sync WASM files and compile TypeScript
 npm run lint       # Type check without building
 npm run clean      # Remove dist directory
+npm run sync:wasm  # Only sync WASM files from mujoco_wasm/dist
 ```
 
+### Full Development Setup
+1. Build the core package first: `cd packages/mujoco-core && npm install && npm run build`
+2. Install frontend dependencies: `cd frontend && npm install`
+3. Start development: `npm run dev`
+
 ### MuJoCo WASM
-The MuJoCo WASM files are built from C++ source. Pre-built artifacts are located in `mujoco_wasm/dist/`.
+The MuJoCo WASM files are built from C++ source. Pre-built artifacts are located in `mujoco_wasm/dist/`. The sync-wasm script automatically copies these files to the core package.
 
 ## Development Workflow
 
@@ -74,14 +81,16 @@ Scenes are defined in `mujoco_wasm/examples/scenes/index.json` and loaded dynami
 - Control parameters
 
 ### TypeScript Configuration
-- Base config at `/tsconfig.base.json` with strict mode enabled
+- Base config at `/tsconfig.base.json` with strict mode enabled, ES2020 target, and NodeNext module resolution
 - Package-specific configs extend the base
-- ES modules with Node16 module resolution
+- All packages use ES modules
 
 ## Testing
 Currently no automated tests are configured. Manual testing via the development server.
 
 ## Important Notes
-- WASM files must be synced from `mujoco_wasm/dist` to `packages/mujoco-core/dist` before building the core package
+- WASM files must be synced from `mujoco_wasm/dist` to `packages/mujoco-core/dist` before building the core package (use `npm run sync:wasm`)
 - The frontend uses dynamic imports for the scene viewer to avoid SSR issues with WebGL
 - Control smoothing is applied to drone inputs for realistic physics behavior
+- The frontend depends on the local mujoco-core package via `file:../packages/mujoco-core`
+- MuJoCo WASM files are served from the `/mujoco/` public path in the frontend

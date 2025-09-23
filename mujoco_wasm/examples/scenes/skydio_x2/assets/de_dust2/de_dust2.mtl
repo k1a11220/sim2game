@@ -1,0 +1,204 @@
+# SandTrim
+newmtl material_0
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_0.png
+
+# -0csSandWall
+newmtl material_1
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_1.png
+
+# SandCrtSmSd
+newmtl material_2
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_2.png
+
+# white
+newmtl material_3
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_3.png
+
+# SandWllWndw
+newmtl material_4
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_4.png
+
+# SandRoad
+newmtl material_5
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_5.png
+
+# -0Sand
+newmtl material_6
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_6.png
+
+# SandWllDoor
+newmtl material_7
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_7.png
+
+# csSandWallDJ1
+newmtl material_8
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_8.png
+
+# SandCrtSmTp
+newmtl material_9
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_9.png
+
+# SandCCrete
+newmtl material_10
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_10.png
+
+# -0SandRock2
+newmtl material_11
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_11.png
+
+# SandCrtLrgSd
+newmtl material_12
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_12.png
+
+# csSandWallGH1a
+newmtl material_13
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_13.png
+
+# csSandWallGH1b
+newmtl material_14
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_14.png
+
+# SandCCrete2
+newmtl material_15
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_15.png
+
+# csSandWallBTA
+newmtl material_16
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_16.png
+
+# SandCrtLrgTp
+newmtl material_17
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_17.png
+
+# black
+newmtl material_18
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_18.png
+
+# djCredit1
+newmtl material_19
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_19.png
+
+# MltryCrteSd
+newmtl material_20
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_20.png
+
+# MltryCrteTp
+newmtl material_21
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_21.png
+
+# -2Sand
+newmtl material_22
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_22.png
+
+# SandWllDoorDJ1
+newmtl material_23
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_23.png
+
+# djCredit2
+newmtl material_24
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_24.png
+
+# SandRoadTgtB
+newmtl material_25
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_25.png
+
+# SandWllDoorBTb
+newmtl material_26
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_26.png
+
+# csSandWallBTB
+newmtl material_27
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_27.png
+
+# SandWllDoorDJ2
+newmtl material_28
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_28.png
+
+# SandWllDoorBTA
+newmtl material_29
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_29.png
+
+# SandWllDoor2
+newmtl material_30
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_30.png
+
+# MltryCrteSd2
+newmtl material_31
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_31.png
+
+# generic011
+newmtl material_32
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_32.png
+
+# +0~fifties_lgt2
+newmtl material_33
+Kd 1.0000 1.0000 1.0000
+illum 0
+map_Kd de_dust2_material_33.png
+

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import load_mujoco from "../dist/mujoco_wasm.js";
-import { OrbitControls } from "../node_modules/three/examples/jsm/controls/OrbitControls.js";
-import { GUI } from "../node_modules/three/examples/jsm/libs/lil-gui.module.min.js";
+import { OrbitControls } from "./libs/controls/OrbitControls.js";
+import { GUI } from "./libs/libs/lil-gui.module.min.js";
 import {
   downloadExampleScenesFolder,
   getPosition,

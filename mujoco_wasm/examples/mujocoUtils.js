@@ -324,27 +324,7 @@ export function setupGUI(parentContext) {
   readouts.add(rpyNow, 'alt').name('Alt (m)').listen();
 
 
-  parentContext.updateGUICallbacks.push(() => {
-  rpyTarget.roll  = parentContext.pidTarget.roll;
-  rpyTarget.pitch = parentContext.pidTarget.pitch;
-  rpyTarget.yaw   = parentContext.pidTarget.yaw;
-  rpyTarget.alt   = parentContext.pidTarget.alt;
-
-  const qpos = parentContext.simulation?.qpos;
-  if (qpos && qpos.length >= 7) {
-    const z = qpos[2];
-    const { roll, pitch, yaw } =
-      parentContext.quatToRPY
-        ? parentContext.quatToRPY(qpos[3], qpos[4], qpos[5], qpos[6])
-        : { roll: 0, pitch: 0, yaw: 0 };
-
-    rpyNow.roll  = roll;
-    rpyNow.pitch = pitch;
-    rpyNow.yaw   = yaw;
-    rpyNow.alt   = z;
-  }
-});
-
+  
   // keep readouts synced each frame
   // keep readouts synced each frame
   parentContext.updateGUICallbacks.push(() => {

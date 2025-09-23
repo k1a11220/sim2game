@@ -128,7 +128,7 @@ export class MuJoCoDemo {
     this.params.fpvUpAxis      = 'z'; // body up axis (usually 'z')
     this.params.fpvForward     = 0.20; // meters forward from the body origin
     this.params.fpvUp          = 0.05; // meters up from the body origin
-    this.params.fpvYawOffsetDeg = 180;   // fine trim if needed: try 90, -90, 180
+    this.params.fpvYawOffsetDeg = 0;   // fine trim if needed: try 90, -90, 180
 
 
 
@@ -557,32 +557,33 @@ if (this.cameraMode === 'track' && this.simulation?.cam_xpos) {
   const pos   = mjcPosToThree(qpos[0], qpos[1], qpos[2]);
   const qBody = mjcQuatToThree(qpos[3], qpos[4], qpos[5], qpos[6]);
 
-  // 1) Take body-frame forward (nose) & up axes and express them in world
-  let f = axisVec(this.params.fpvForwardAxis).applyQuaternion(qBody).normalize(); // forward = where the drone’s NOSE points
-  let u = axisVec(this.params.fpvUpAxis).applyQuaternion(qBody).normalize();      // up = body up
+  // 1) world forward (nose) & up from body axes
+  let f = axisVec(this.params.fpvForwardAxis).applyQuaternion(qBody).normalize(); // nose
+  let u = axisVec(this.params.fpvUpAxis).applyQuaternion(qBody).normalize();      // body up
 
-  // 2) Optional fine trim: yaw FPV around body up to align exactly with W if needed
+  // 2) optional yaw trim around body-up
   const yawOff = THREE.MathUtils.degToRad(this.params.fpvYawOffsetDeg || 0);
   if (yawOff !== 0) {
     const qYaw = new THREE.Quaternion().setFromAxisAngle(u, yawOff);
     f.applyQuaternion(qYaw).normalize();
   }
 
-  // 3) Orthonormal camera basis (right = up × forward, re-orthonormalize up)
-  const r = new THREE.Vector3().crossVectors(u, f).normalize();
-  u = new THREE.Vector3().crossVectors(f, r).normalize();
+  // 3) build a proper RIGHT-HANDED basis: r = f × u, then re-orthonormalize u
+  const r = new THREE.Vector3().crossVectors(f, u).normalize(); // RIGHT
+  u = new THREE.Vector3().crossVectors(r, f).normalize();       // corrected UP
 
-  // 4) Three cameras look down -Z; set basis so -Z == forward
+  // 4) three.js cameras look down -Z; make -Z = forward
   const M = new THREE.Matrix4().makeBasis(r, u, f.clone().multiplyScalar(-1));
   this.droneCamera.quaternion.setFromRotationMatrix(M);
 
-  // 5) Mount the camera AT THE NOSE: translate along the body forward & a bit up
+  // 5) move the camera to the drone's NOSE (a bit forward & up in body frame)
   this.droneCamera.position.copy(pos)
     .add(f.clone().multiplyScalar(this.params.fpvForward))
     .add(u.clone().multiplyScalar(this.params.fpvUp));
 
   activeCamera = this.droneCamera;
 }
+
 
 
 

@@ -122,6 +122,8 @@
   "shadow_hand/scene_right.xml",
   "simple.xml",
   "skydio_x2/assets/X2_lowpoly.obj",
+  "skydio_x2/assets/X2_lowpoly_original.obj",
+  "skydio_x2/assets/tung_nomtl.obj",
   "skydio_x2/assets/X2_lowpoly_texture_SpinningProps_1024.png",
   "skydio_x2/assets/de_dust2/de_dust2.mtl",
   "skydio_x2/assets/de_dust2/de_dust2.obj",

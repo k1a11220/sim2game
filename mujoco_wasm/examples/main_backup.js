@@ -28,23 +28,6 @@ mujoco.FS.mkdir("/working");
 mujoco.FS.mount(mujoco.MEMFS, { root: "." }, "/working");
 await downloadExampleScenesFolder(mujoco);
 
-// --- MuJoCo -> three.js frame conversions ---
-const MJ2THREE_ADJ = new THREE.Quaternion().setFromAxisAngle(
-  new THREE.Vector3(1, 0, 0), -Math.PI / 2 // rotate frame: Z-up -> Y-up
-);
-
-// (x, y, z)_mjc  -->  (x, z, -y)_three
-function mjcPosToThree(x, y, z) {
-  return new THREE.Vector3(x, z, -y);
-}
-
-// MuJoCo quat is (w,x,y,z); three wants (x,y,z,w) + frame rotation
-function mjcQuatToThree(qw, qx, qy, qz) {
-  const q = new THREE.Quaternion(qx, qy, qz, qw);
-  q.premultiply(MJ2THREE_ADJ);
-  return q;
-}
-
 // --- Minimal PID ---
 class PID {
   constructor(
@@ -101,12 +84,13 @@ class PID {
   }
 }
 
+// gentler starting gains
+
 const wrapPI = (a) => {
   while (a > Math.PI) a -= 2 * Math.PI;
   while (a < -Math.PI) a += 2 * Math.PI;
   return a;
 };
-
 function quatToRPY(qw, qx, qy, qz) {
   const sinr_cosp = 2 * (qw * qx + qy * qz);
   const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
@@ -120,18 +104,6 @@ function quatToRPY(qw, qx, qy, qz) {
   return { roll, pitch, yaw };
 }
 
-const axisVec = (name) => {
-  switch (name) {
-    case 'x':  return new THREE.Vector3( 1, 0, 0);
-    case '-x': return new THREE.Vector3(-1, 0, 0);
-    case 'y':  return new THREE.Vector3( 0, 1, 0);
-    case '-y': return new THREE.Vector3( 0,-1, 0);
-    case 'z':  return new THREE.Vector3( 0, 0, 1);
-    case '-z': return new THREE.Vector3( 0, 0,-1);
-    default:   return new THREE.Vector3( 1, 0, 0);
-  }
-};
-
 export class MuJoCoDemo {
   constructor() {
     console.log("=== CONSTRUCTOR START ===");
@@ -142,6 +114,7 @@ export class MuJoCoDemo {
     this.model = new mujoco.Model("/working/" + initialScene);
     this.state = new mujoco.State(this.model);
     this.simulation = new mujoco.Simulation(this.model, this.state);
+    // Avoid accessing ctrl directly in constructor - causes memory alignment issues
     console.log("Model loaded successfully");
 
     // Define Random State Variables
@@ -155,16 +128,6 @@ export class MuJoCoDemo {
       useTungModel: false,  // Toggle for model switching
     };
     this.params.altitudeOnly = false;
-
-    // Camera tuning params from main_new.js
-    this.params.trackBack = 1.5;   // meters "behind" the MuJoCo camera
-    this.params.trackUp   = 0.2;   // slight upward offset
-    this.params.fpvForward = 0.20; // move forward in view direction (meters)
-    this.params.fpvUp      = 0.05; // nudge up
-    this.params.fpvForwardAxis = 'x'; // 'x' | '-x' | 'y' | '-y' | 'z' | '-z'
-    this.params.fpvUpAxis      = 'z'; // body up axis (usually 'z')
-    this.params.fpvYawOffsetDeg = 0;   // fine trim if needed
-
     this.mujoco_time = 0.0;
     (this.bodies = {}), (this.lights = {});
     this.tmpVec = new THREE.Vector3();
@@ -193,7 +156,6 @@ export class MuJoCoDemo {
     this.scene = new THREE.Scene();
     this.scene.name = "scene";
 
-    // CREATE CAMERAS
     this.camera = new THREE.PerspectiveCamera(
       45,
       window.innerWidth / window.innerHeight,
@@ -204,22 +166,8 @@ export class MuJoCoDemo {
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    // Add drone camera from main_new.js
-    this.droneCamera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.01,
-      2000
-    );
-    this.droneCamera.near = 0.001;
-    this.droneCamera.updateProjectionMatrix();
-    this.droneCamera.name = 'DroneCamera';
-    this.scene.add(this.droneCamera);
-
-    // Camera mode management
-    this.cameraMode = 'orbit';
-
     this.scene.background = new THREE.Color(0.9, 0.9, 0.9);
+    // this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5 );
 
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
     this.ambientLight.name = "AmbientLight";
@@ -229,21 +177,10 @@ export class MuJoCoDemo {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
     this.renderer.setAnimationLoop(this.render.bind(this));
 
     this.container.appendChild(this.renderer.domElement);
-
-    // Wheel zoom for track/fpv modes
-    this.container.addEventListener('wheel', (e) => {
-      if (this.cameraMode === 'track') {
-        const delta = Math.sign(e.deltaY) * 0.2;
-        this.params.trackBack = Math.max(0.1, this.params.trackBack + delta);
-      } else if (this.cameraMode === 'fpv') {
-        const delta = Math.sign(e.deltaY) * 0.05;
-        this.params.fpvForward = Math.max(0.0, this.params.fpvForward + delta);
-      }
-    }, { passive: true });
 
     const canvas = this.renderer.domElement;
     if (canvas.tabIndex === undefined || canvas.tabIndex < 0) {
@@ -255,7 +192,6 @@ export class MuJoCoDemo {
     canvas.addEventListener("touchstart", focusCanvas, { passive: true });
     canvas.focus();
 
-    // Create controls after camera and renderer
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0.7, 0);
     this.controls.panSpeed = 2;
@@ -265,29 +201,9 @@ export class MuJoCoDemo {
     this.controls.screenSpacePanning = true;
     this.controls.update();
 
-    // Add camera switching
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'c' || e.key === 'C') {
-        this.cycleCameraMode();
-      }
-    });
-
-    // Camera indicator HUD
-    this.cameraIndicator = document.createElement('div');
-    this.cameraIndicator.style.position = 'absolute';
-    this.cameraIndicator.style.top = '10px';
-    this.cameraIndicator.style.right = '10px';
-    this.cameraIndicator.style.padding = '10px';
-    this.cameraIndicator.style.backgroundColor = 'rgba(0,0,0,0.5)';
-    this.cameraIndicator.style.color = 'white';
-    this.cameraIndicator.style.fontFamily = 'monospace';
-    this.cameraIndicator.style.borderRadius = '5px';
-    this.cameraIndicator.textContent = 'Camera: ORBIT (Press C to cycle)';
-    this.container.appendChild(this.cameraIndicator);
-
     window.addEventListener("resize", this.onWindowResize.bind(this));
 
-    // Initialize the Drag State Manager
+    // Initialize the Drag State Manager.
     this.dragStateManager = new DragStateManager(
       this.scene,
       this.renderer,
@@ -295,31 +211,29 @@ export class MuJoCoDemo {
       this.container.parentElement,
       this.controls
     );
+    // Don't call resetCtrlTargets in constructor - defer to init()
+    // this.resetCtrlTargets();
 
-    // PID control setup
-    this.params.pidEnabled = true;
-    console.log("PID initially:", this.params.pidEnabled ? "ENABLED" : "DISABLED");
+    // after existing gains:
+    this.params.pidEnabled = true; // START WITH PID DISABLED FOR TESTING
+    console.log(
+      "PID initially:",
+      this.params.pidEnabled ? "ENABLED" : "DISABLED"
+    );
 
+    // target setpoints (radians/meters)
     this.pidTarget = { roll: 0, pitch: 0, yaw: 0, yawRateCmd: 0, alt: 0.8 };
 
+    // controllers (start conservatively; tune later)
     this.rollPID = new PID(2.0, 2.0, 2.0, -4, 4);
     this.pitchPID = new PID(2.0, 2.0, 2.0, -4, 4);
     this.yawPID = new PID(2.0, 2.0, 2.0, -3, 3);
     this.altPID = new PID(2.0, 2.0, 2.0, -12, 12);
 
+    // hover estimate; actuator clamp stays from configureSkydioActuators()
     this.baseHover = this.hoverThrust;
     console.log("baseHover set to:", this.baseHover);
     console.log("=== CONSTRUCTOR END ===");
-  }
-
-  // Camera mode cycling from main_new.js
-  cycleCameraMode() {
-    const modes = ['orbit', 'track', 'fpv'];
-    const currentIndex = modes.indexOf(this.cameraMode);
-    this.cameraMode = modes[(currentIndex + 1) % modes.length];
-
-    this.controls.enabled = (this.cameraMode === 'orbit');
-    console.log(`Switched to ${this.cameraMode} camera`);
   }
 
   async init() {
@@ -352,7 +266,7 @@ export class MuJoCoDemo {
     this.gui = new GUI();
     setupGUI(this);
 
-    // Add model toggle button from main.js
+    // Add model toggle button
     this.gui.add(this.params, 'useTungModel').name('Use Tung Model').onChange((value) => {
       this.swapModel(value);
     });
@@ -360,13 +274,13 @@ export class MuJoCoDemo {
     console.log("=== INIT COMPLETE ===");
   }
 
-  // Model swap function from main.js
   swapModel(useTung) {
     const fs = this.mujoco.FS;
 
     console.log(`Starting model swap: ${useTung ? 'to Tung' : 'to Drone'}`);
 
     try {
+      // First, let's debug the entire file system structure
       console.log('=== DEBUGGING FILE SYSTEM ===');
 
       // Check root working directory
@@ -487,8 +401,6 @@ export class MuJoCoDemo {
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
-    this.droneCamera.aspect = window.innerWidth / window.innerHeight;
-    this.droneCamera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
@@ -569,7 +481,7 @@ export class MuJoCoDemo {
             }
           }
           let bodyID = dragged.bodyID;
-          this.dragStateManager.update();
+          this.dragStateManager.update(); // Update the world-space force origin
           let force = toMujocoPos(
             this.dragStateManager.currentWorld
               .clone()
@@ -589,6 +501,8 @@ export class MuJoCoDemo {
             point.z,
             bodyID
           );
+
+          // TODO: Apply pose perturbations (mocap bodies only).
         }
 
         this.simulation.step();
@@ -596,12 +510,12 @@ export class MuJoCoDemo {
         this.mujoco_time += timestep * 1000.0;
       }
     } else if (this.params["paused"]) {
-      this.dragStateManager.update();
+      this.dragStateManager.update(); // Update the world-space force origin
       let dragged = this.dragStateManager.physicsObject;
       if (dragged && dragged.bodyID) {
         let b = dragged.bodyID;
-        getPosition(this.simulation.xpos, b, this.tmpVec, false);
-        getQuaternion(this.simulation.xquat, b, this.tmpQuat, false);
+        getPosition(this.simulation.xpos, b, this.tmpVec, false); // Get raw coordinate from MuJoCo
+        getQuaternion(this.simulation.xquat, b, this.tmpQuat, false); // Get raw coordinate from MuJoCo
 
         let offset = toMujocoPos(
           this.dragStateManager.currentWorld
@@ -610,6 +524,7 @@ export class MuJoCoDemo {
             .multiplyScalar(0.3)
         );
         if (this.model.body_mocapid[b] >= 0) {
+          // Set the root body's mocap position...
           console.log("Trying to move mocap body", b);
           let addr = this.model.body_mocapid[b] * 3;
           let pos = this.simulation.mocap_pos;
@@ -617,6 +532,7 @@ export class MuJoCoDemo {
           pos[addr + 1] += offset.y;
           pos[addr + 2] += offset.z;
         } else {
+          // Set the root body's position directly...
           let root = this.model.body_rootid[b];
           let addr = this.model.jnt_qposadr[this.model.body_jntadr[root]];
           let pos = this.simulation.qpos;
@@ -629,7 +545,7 @@ export class MuJoCoDemo {
       this.simulation.forward();
     }
 
-    // Update body transforms
+    // Update body transforms.
     for (let b = 0; b < this.model.nbody; b++) {
       if (this.bodies[b]) {
         getPosition(this.simulation.xpos, b, this.bodies[b].position);
@@ -638,7 +554,7 @@ export class MuJoCoDemo {
       }
     }
 
-    // Update light transforms
+    // Update light transforms.
     for (let l = 0; l < this.model.nlight; l++) {
       if (this.lights[l]) {
         getPosition(this.simulation.light_xpos, l, this.lights[l].position);
@@ -647,7 +563,7 @@ export class MuJoCoDemo {
       }
     }
 
-    // Update tendon transforms
+    // Update tendon transforms.
     let numWraps = 0;
     if (this.mujocoRoot && this.mujocoRoot.cylinders) {
       let mat = new THREE.Matrix4();
@@ -716,114 +632,8 @@ export class MuJoCoDemo {
       this.mujocoRoot.spheres.instanceMatrix.needsUpdate = true;
     }
 
-    // Camera update logic from main_new.js
-    let activeCamera = this.camera;
-
-    // Debug logging helper
-    const logCameraDebug = () => {
-      if (this.frameCount % 30 === 0) {
-        console.log('=== CAMERA DEBUG ===');
-        console.log(`Mode: ${this.cameraMode}`);
-
-        if (this.simulation.qpos && this.simulation.qpos.length >= 7) {
-          const qpos = this.simulation.qpos;
-          const p = mjcPosToThree(qpos[0], qpos[1], qpos[2]);
-          const { roll, pitch, yaw } = this.quatToRPY(qpos[3], qpos[4], qpos[5], qpos[6]);
-          console.log('Drone Position:', {
-            x: p.x.toFixed(2), y: p.y.toFixed(2), z: p.z.toFixed(2)
-          });
-          console.log('Drone Rotation (deg):', {
-            roll: (roll * 180/Math.PI).toFixed(1),
-            pitch: (pitch * 180/Math.PI).toFixed(1),
-            yaw: (yaw * 180/Math.PI).toFixed(1)
-          });
-        }
-
-        console.log('Camera Position:', {
-          x: this.droneCamera.position.x.toFixed(2),
-          y: this.droneCamera.position.y.toFixed(2),
-          z: this.droneCamera.position.z.toFixed(2)
-        });
-      }
-    };
-
-    // --- TRACK MODE ---
-    if (this.cameraMode === 'track' && this.simulation?.cam_xpos) {
-      const camIdx = 0;
-      const addr = camIdx * 3;
-
-      // Base position (converted)
-      const p = this.simulation.cam_xpos;
-      const camP = mjcPosToThree(p[addr+0], p[addr+1], p[addr+2]);
-
-      // Orientation (prefer cam_xmat)
-      let qCam = null;
-      if (this.simulation.cam_xmat) {
-        const m = this.simulation.cam_xmat;
-        const a = camIdx * 9;
-        const M = new THREE.Matrix4().set(
-          m[a+0], m[a+1], m[a+2], 0,
-          m[a+3], m[a+4], m[a+5], 0,
-          m[a+6], m[a+7], m[a+8], 0,
-          0,      0,      0,      1
-        );
-        qCam = new THREE.Quaternion().setFromRotationMatrix(M);
-        qCam.premultiply(MJ2THREE_ADJ);
-        this.droneCamera.quaternion.copy(qCam);
-      }
-
-      // Apply a local-space offset
-      const qForAxes = qCam ?? this.droneCamera.quaternion;
-      const back = new THREE.Vector3(0, 0, 1).applyQuaternion(qForAxes).multiplyScalar(this.params.trackBack);
-      const up   = new THREE.Vector3(0, 1, 0).applyQuaternion(qForAxes).multiplyScalar(this.params.trackUp);
-
-      this.droneCamera.position.copy(camP).add(back).add(up);
-
-      // Fallback look-at if no orientation matrix was available
-      if (!qCam && this.simulation.qpos?.length >= 3) {
-        const look = mjcPosToThree(this.simulation.qpos[0], this.simulation.qpos[1], this.simulation.qpos[2]);
-        this.droneCamera.lookAt(look);
-      }
-
-      activeCamera = this.droneCamera;
-      logCameraDebug();
-    }
-    // --- FPV MODE ---
-    else if (this.cameraMode === 'fpv' && this.simulation?.qpos?.length >= 7) {
-      const qpos  = this.simulation.qpos;
-      const pos   = mjcPosToThree(qpos[0], qpos[1], qpos[2]);
-      const qBody = mjcQuatToThree(qpos[3], qpos[4], qpos[5], qpos[6]);
-
-      // 1) world forward (nose) & up from body axes
-      let f = axisVec(this.params.fpvForwardAxis).applyQuaternion(qBody).normalize();
-      let u = axisVec(this.params.fpvUpAxis).applyQuaternion(qBody).normalize();
-
-      // 2) optional yaw trim around body-up
-      const yawOff = THREE.MathUtils.degToRad(this.params.fpvYawOffsetDeg || 0);
-      if (yawOff !== 0) {
-        const qYaw = new THREE.Quaternion().setFromAxisAngle(u, yawOff);
-        f.applyQuaternion(qYaw).normalize();
-      }
-
-      // 3) build a proper RIGHT-HANDED basis
-      const r = new THREE.Vector3().crossVectors(f, u).normalize();
-      u = new THREE.Vector3().crossVectors(r, f).normalize();
-
-      // 4) three.js cameras look down -Z; make -Z = forward
-      const M = new THREE.Matrix4().makeBasis(r, u, f.clone().multiplyScalar(-1));
-      this.droneCamera.quaternion.setFromRotationMatrix(M);
-
-      // 5) move the camera to the drone's NOSE
-      this.droneCamera.position.copy(pos)
-        .add(f.clone().multiplyScalar(this.params.fpvForward))
-        .add(u.clone().multiplyScalar(this.params.fpvUp));
-
-      activeCamera = this.droneCamera;
-    }
-
-    // HUD + single render
-    this.cameraIndicator.textContent = `Camera: ${this.cameraMode.toUpperCase()} (Press C to cycle)`;
-    this.renderer.render(this.scene, activeCamera);
+    // Render!
+    this.renderer.render(this.scene, this.camera);
   }
 
   resetCtrlTargets() {
@@ -963,6 +773,7 @@ export class MuJoCoDemo {
   }
 
   updatePIDControl(nowMs) {
+    // only for skydio scene and when configured
     if (!this.shouldApplySkydioControl()) {
       console.log("Not Skydio scene, skipping PID");
       return;
@@ -973,6 +784,7 @@ export class MuJoCoDemo {
       return;
     }
 
+    // Get qpos from state object (not simulation) - THIS IS THE KEY FIX
     let qpos = this.simulation.qpos;
 
     if (!qpos || qpos.length < 7) {
@@ -980,12 +792,14 @@ export class MuJoCoDemo {
       console.error("Invalid qpos!", qpos);
       return;
     }
+    // read current pose from free joint: qpos[0..2]=xyz, [3..6]=quat w,x,y,z
     const z = qpos[2] || 0;
     const qw = qpos[3] || 1;
     const qx = qpos[4] || 0;
     const qy = qpos[5] || 0;
     const qz = qpos[6] || 0;
 
+    // Debug: Check quaternion validity
     const qNorm = Math.sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
     if (Math.abs(qNorm - 1.0) > 0.1) {
       console.warn("Quaternion not normalized:", qNorm, { qw, qx, qy, qz });
@@ -993,6 +807,7 @@ export class MuJoCoDemo {
 
     const { roll, pitch, yaw } = quatToRPY(qw, qx, qy, qz);
 
+    // Debug: Check for NaN in angles
     if (
       !Number.isFinite(roll) ||
       !Number.isFinite(pitch) ||
@@ -1002,6 +817,7 @@ export class MuJoCoDemo {
       return;
     }
 
+    // Log every 60 frames
     if (this.frameCount && this.frameCount % ftick === 0) {
       console.log("PID State:", {
         z: z.toFixed(3),
@@ -1022,8 +838,13 @@ export class MuJoCoDemo {
       });
     }
 
+    // altitude
+    // const u_alt   = this.altPID.step  (this.pidTarget.alt , z    , dt);
+
+    // use the simulation dt (seconds) for PID math
     const simdt = this.model.getOptions().timestep;
 
+    // integrate yaw setpoint from key-held yaw rate
     this.pidTarget.yaw = wrapPI(
       this.pidTarget.yaw + this.pidTarget.yawRateCmd * simdt
     );
@@ -1031,9 +852,12 @@ export class MuJoCoDemo {
     let u_alt, u_roll, u_pitch, u_yaw;
 
     if (this.params.altitudeOnly) {
+      // --------- ATTITUDE-ONLY MODE ----------
+      // 1) kill altitude loop: only baseHover provides lift
       u_alt = 0.0;
 
-      const Kp_roll = 2.0;
+      // 2) P-only attitude (Ki=Kd=0); start with small Kp
+      const Kp_roll = 2.0; // try 2.0 → 3.5
       const Kp_pitch = 2.0;
       const Kp_yaw = 1.0;
 
@@ -1043,12 +867,14 @@ export class MuJoCoDemo {
 
       u_roll = Kp_roll * rollErr;
       u_pitch = Kp_pitch * pitchErr;
-      u_yaw = Kp_yaw * -yawErr;
+      u_yaw = Kp_yaw * -yawErr; // sign to match your mixer
 
+      // Optional: clamp attitude commands so you don't rail motors
       u_roll = Math.max(-4, Math.min(4, u_roll));
       u_pitch = Math.max(-4, Math.min(4, u_pitch));
       u_yaw = Math.max(-3, Math.min(3, u_yaw));
     } else {
+      // --------- NORMAL MODE (full PID) ----------
       const qv = this.simulation.qvel || [];
       const wx = qv[3] || 0;
       const wy = qv[4] || 0;
@@ -1060,11 +886,15 @@ export class MuJoCoDemo {
       u_yaw = this.yawPID.step(0.0, -yawErr, simdt);
     }
 
+    // Debug: Check altitude PID
     if (!Number.isFinite(u_alt)) {
       console.error("NaN in u_alt!", { target: this.pidTarget.alt, z, nowMs });
       return;
     }
 
+    // attitude
+
+    // Debug: Check attitude PIDs
     if (
       !Number.isFinite(u_roll) ||
       !Number.isFinite(u_pitch) ||
@@ -1081,15 +911,21 @@ export class MuJoCoDemo {
       return;
     }
 
+    // mix to 4 motors (X-quad); uses existing thrust range clamp/smoothing
     const T = this.baseHover + u_alt;
 
+    // Debug: Check base thrust
     if (!Number.isFinite(T)) {
       console.error("NaN in T!", { baseHover: this.baseHover, u_alt });
       return;
     }
     const desired = new Float32Array(4);
-    const YAW_SIGNS = [-1, +1, -1, +1];
+    // signs per motor (m0..m3) for roll, pitch, yaw
+    const ROLL_SIGNS = [-1, +1, +1, -1];
+    const PITCH_SIGNS = [+1, +1, -1, -1];
+    const YAW_SIGNS = [-1, +1, -1, +1]; // adjust if your rotor spin directions differ
 
+    // replace your desired[] mixer with:
     for (let i = 0; i < 4; i++) {
       desired[i] =
         T +
@@ -1098,6 +934,7 @@ export class MuJoCoDemo {
         u_yaw * YAW_SIGNS[i];
     }
 
+    // Log control outputs every 60 frames
     if (this.frameCount && this.frameCount % ftick === 0) {
       console.log("PID Control:", {
         u_alt: u_alt.toFixed(3),
@@ -1109,6 +946,7 @@ export class MuJoCoDemo {
         motors: desired.map((d) => d.toFixed(2)),
       });
 
+      // Also log PID internals
       console.log("PID Internals:", {
         alt_i: this.altPID.i.toFixed(3),
         roll_i: this.rollPID.i.toFixed(3),
@@ -1117,6 +955,7 @@ export class MuJoCoDemo {
       });
     }
 
+    // Check for NaN in each motor
     for (let i = 0; i < 4; i++) {
       if (!Number.isFinite(desired[i])) {
         console.error("NaN in motor", i, {
@@ -1131,8 +970,10 @@ export class MuJoCoDemo {
       }
     }
 
+    // smooth + clamp to ctrl
     const ctrl = this.simulation.ctrl;
 
+    // Debug: Check ctrl array
     if (!ctrl || ctrl.length < 4) {
       console.error("Invalid ctrl array!", ctrl);
       return;
@@ -1143,6 +984,7 @@ export class MuJoCoDemo {
       const current = ctrl[idx] || 0;
       const next = current + (desired[i] - current) * this.controlSmoothing;
 
+      // Debug each motor update
       if (this.frameCount && this.frameCount % ftick === 0 && i === 0) {
         console.log(
           `Motor ${i}: current=${current.toFixed(2)}, desired=${desired[
@@ -1157,6 +999,7 @@ export class MuJoCoDemo {
       );
     }
 
+    // Log final control values every 60 frames
     if (this.frameCount && this.frameCount % ftick === 0) {
       console.log(
         "Final ctrl:",
@@ -1170,47 +1013,56 @@ export class MuJoCoDemo {
     const m = this.inputManager;
     if (!m) return;
 
+    // Altitude control (unchanged)
     const ascend =
       (m.isPressed("Space") ? 1 : 0) - (m.isPressed("KeyZ") ? 1 : 0);
     this.pidTarget.alt = Math.max(0.0, this.pidTarget.alt + ascend * 0.6 * dt);
 
+    // Pitch control with auto-centering
     const pitchCmd =
       (m.isPressed("KeyS") ? 1 : 0) - (m.isPressed("KeyW") ? 1 : 0);
     if (pitchCmd !== 0) {
+      // Active control - move setpoint
       this.pidTarget.pitch = THREE.MathUtils.clamp(
         this.pidTarget.pitch + -pitchCmd * ((12 * Math.PI) / 180) * dt,
         (-20 * Math.PI) / 180,
         (20 * Math.PI) / 180
       );
     } else {
-      const decayRate = 3.0;
+      // No input - decay back to zero
+      const decayRate = 3.0; // Higher = faster return to level
       this.pidTarget.pitch *= Math.exp(-decayRate * dt);
 
+      // Snap to zero when very small
       if (Math.abs(this.pidTarget.pitch) < 0.01) {
         this.pidTarget.pitch = 0;
       }
       if (Math.abs(this.pidTarget.pitch) < 0.1) {
-        this.pitchPID.i *= 0.9;
+        this.pitchPID.i *= 0.9; // Gradually clear integral
       }
     }
 
+    // Roll control with auto-centering
     const rollCmd =
       (m.isPressed("KeyD") ? 1 : 0) - (m.isPressed("KeyA") ? 1 : 0);
     if (rollCmd !== 0) {
+      // Active control - move setpoint
       this.pidTarget.roll = THREE.MathUtils.clamp(
         this.pidTarget.roll + rollCmd * ((12 * Math.PI) / 180) * dt,
         (-20 * Math.PI) / 180,
         (20 * Math.PI) / 180
       );
     } else {
-      const decayRate = 3.0;
+      // No input - decay back to zero
+      const decayRate = 3.0; // Same decay rate for consistency
       this.pidTarget.roll *= Math.exp(-decayRate * dt);
 
+      // Snap to zero when very small
       if (Math.abs(this.pidTarget.roll) < 0.01) {
         this.pidTarget.roll = 0;
       }
       if (Math.abs(this.pidTarget.roll) < 0.1) {
-        this.rollPID.i *= 0.9;
+        this.rollPID.i *= 0.9; // Gradually clear integral
       }
     }
   }

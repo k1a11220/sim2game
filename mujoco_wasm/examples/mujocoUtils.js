@@ -535,11 +535,29 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
         model.geom_rgba[(g * 4) + 3]];
       if (model.geom_matid[g] != -1) {
         let matId = model.geom_matid[g];
-        color = [
-          model.mat_rgba[(matId * 4) + 0],
-          model.mat_rgba[(matId * 4) + 1],
-          model.mat_rgba[(matId * 4) + 2],
-          model.mat_rgba[(matId * 4) + 3]];
+
+        // Get material name for debugging
+        let matName = "";
+        if (model.names && model.name_matadr) {
+          const nameStart = model.name_matadr[matId];
+          const nameBytes = [];
+          for (let i = nameStart; model.names[i] !== 0; i++) {
+            nameBytes.push(model.names[i]);
+          }
+          matName = String.fromCharCode(...nameBytes);
+        }
+
+        // Special handling for orange material
+        if (matName === "orange") {
+          color = [1.0, 0.5, 0.0, 1.0];
+          console.log("Applied orange material to geom", g);
+        } else {
+          color = [
+            model.mat_rgba[(matId * 4) + 0],
+            model.mat_rgba[(matId * 4) + 1],
+            model.mat_rgba[(matId * 4) + 2],
+            model.mat_rgba[(matId * 4) + 3]];
+        }
 
         // Construct Texture from model.tex_rgb
         texture = undefined;
@@ -621,13 +639,17 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
     mujocoRoot.spheres.castShadow    = true;
     mujocoRoot.add(mujocoRoot.spheres);
 
+    // Add ambient light for better visibility
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    mujocoRoot.add(ambientLight);
+
     // Parse lights.
     for (let l = 0; l < model.nlight; l++) {
-      let light = new THREE.SpotLight();
+      let light = new THREE.SpotLight(0xffffff, 1.0);
       if (model.light_directional[l]) {
-        light = new THREE.DirectionalLight();
+        light = new THREE.DirectionalLight(0xffffff, 1.0);
       } else {
-        light = new THREE.SpotLight();
+        light = new THREE.SpotLight(0xffffff, 1.0);
       }
       light.decay = model.light_attenuation[l] * 100;
       light.penumbra = 0.5;
@@ -646,7 +668,7 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
       lights.push(light);
     }
     if (model.nlight == 0) {
-      let light = new THREE.DirectionalLight();
+      let light = new THREE.DirectionalLight(0xffffff, 1.0);
       mujocoRoot.add(light);
     }
 

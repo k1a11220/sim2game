@@ -119,12 +119,12 @@ export class MuJoCoDemo {
     this.scene = new THREE.Scene();
     this.scene.name = 'scene';
 
-    this.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 100 );
+    this.camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.001, 2000 );
     this.camera.name = 'PerspectiveCamera';
     this.camera.position.set(2.0, 1.7, 1.7);
     this.scene.add(this.camera);
 
-    this.scene.background = new THREE.Color(0.15, 0.25, 0.35);
+    this.scene.background = new THREE.Color(0.9, 0.9, 0.9);
     // this.scene.fog = new THREE.Fog(this.scene.background, 15, 25.5 );
 
     this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.1 );

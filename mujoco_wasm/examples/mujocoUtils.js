@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Reflector  } from './utils/Reflector.js';
-import { MuJoCoDemo } from './main.js';
+/** @typedef {import('./main.js').MuJoCoDemo} MuJoCoDemo */
+
 
 export async function reloadFunc() {
   // Delete the old scene and load the new scene
@@ -271,6 +272,103 @@ export function setupGUI(parentContext) {
   });
   actionInnerHTML += 'Reset free camera<br>';
   keyInnerHTML += 'Ctrl A<br>';
+  // === PID tuning GUI ===
+  const pidRoot = parentContext.gui.addFolder('PID Tuning');
+
+  // top-level toggles & helpers
+  pidRoot.add(parentContext.params, 'pidEnabled').name('PID Enabled');
+  pidRoot.add(parentContext.params, 'altitudeOnly').name('Attitude-only (no alt PID)');
+  pidRoot.add(parentContext, 'baseHover', 0, 13, 0.01).name('Base hover');
+  pidRoot.add(parentContext, 'controlSmoothing', 0, 1, 0.01).name('Ctrl smoothing');
+
+  // helper to add a PID sub-folder
+  function addPidFolder(name, pid, ranges = {}) {
+    const f = pidRoot.addFolder(name);
+    const kp = ranges.kp ?? [0, 20];
+    const ki = ranges.ki ?? [0, 10];
+    const kd = ranges.kd ?? [0, 10];
+    const out = ranges.out ?? [-20, 20];
+    const i   = ranges.i   ?? [-5, 5];
+
+    f.add(pid, 'kp', kp[0], kp[1], 0.01).name('Kp');
+    f.add(pid, 'ki', ki[0], ki[1], 0.01).name('Ki');
+    f.add(pid, 'kd', kd[0], kd[1], 0.01).name('Kd');
+
+    // limits & integral clamp
+    f.add(pid, 'outMin', out[0], 0, 0.1).name('Out min');
+    f.add(pid, 'outMax', 0, out[1], 0.1).name('Out max');
+    f.add(pid, 'iMin', i[0], 0, 0.1).name('I min');
+    f.add(pid, 'iMax', 0, i[1], 0.1).name('I max');
+
+    f.add({ reset: () => pid.reset() }, 'reset').name('Reset integrator');
+    return f;
+  }
+
+  // make folders for each loop
+  addPidFolder('Roll',      parentContext.rollPID,  { kp:[0,10], ki:[0,5], kd:[0,5], out:[-8,8], i:[-3,3] });
+  addPidFolder('Pitch',     parentContext.pitchPID, { kp:[0,10], ki:[0,5], kd:[0,5], out:[-8,8], i:[-3,3] });
+  addPidFolder('Yaw',       parentContext.yawPID,   { kp:[0,10], ki:[0,5], kd:[0,5], out:[-6,6], i:[-3,3] });
+  addPidFolder('Altitude',  parentContext.altPID,   { kp:[0,20], ki:[0,10], kd:[0,10], out:[0,13], i:[-3,3] });
+
+  // live readouts (targets vs actual)
+  const rpyTarget = { roll:0, pitch:0, yaw:0, alt: parentContext.pidTarget.alt };
+  const rpyNow    = { roll:0, pitch:0, yaw:0, alt: 0 };
+  const readouts  = pidRoot.addFolder('Readouts');
+  readouts.add(rpyTarget, 'roll').name('Target roll (rad)').listen();
+  readouts.add(rpyTarget, 'pitch').name('Target pitch (rad)').listen();
+  readouts.add(rpyTarget, 'yaw').name('Target yaw (rad)').listen();
+  readouts.add(rpyTarget, 'alt').name('Target alt (m)').listen();
+  readouts.add(rpyNow, 'roll').name('Roll (rad)').listen();
+  readouts.add(rpyNow, 'pitch').name('Pitch (rad)').listen();
+  readouts.add(rpyNow, 'yaw').name('Yaw (rad)').listen();
+  readouts.add(rpyNow, 'alt').name('Alt (m)').listen();
+
+
+  parentContext.updateGUICallbacks.push(() => {
+  rpyTarget.roll  = parentContext.pidTarget.roll;
+  rpyTarget.pitch = parentContext.pidTarget.pitch;
+  rpyTarget.yaw   = parentContext.pidTarget.yaw;
+  rpyTarget.alt   = parentContext.pidTarget.alt;
+
+  const qpos = parentContext.simulation?.qpos;
+  if (qpos && qpos.length >= 7) {
+    const z = qpos[2];
+    const { roll, pitch, yaw } =
+      parentContext.quatToRPY
+        ? parentContext.quatToRPY(qpos[3], qpos[4], qpos[5], qpos[6])
+        : { roll: 0, pitch: 0, yaw: 0 };
+
+    rpyNow.roll  = roll;
+    rpyNow.pitch = pitch;
+    rpyNow.yaw   = yaw;
+    rpyNow.alt   = z;
+  }
+});
+
+  // keep readouts synced each frame
+  // keep readouts synced each frame
+  parentContext.updateGUICallbacks.push(() => {
+    rpyTarget.roll  = parentContext.pidTarget.roll;
+    rpyTarget.pitch = parentContext.pidTarget.pitch;
+    rpyTarget.yaw   = parentContext.pidTarget.yaw;
+    rpyTarget.alt   = parentContext.pidTarget.alt;
+
+    const qpos = parentContext.simulation?.qpos;
+    if (qpos && qpos.length >= 7) {
+      const z = qpos[2];
+      const { roll, pitch, yaw } =
+        // see #2 below
+        parentContext.quatToRPY
+          ? parentContext.quatToRPY(qpos[3], qpos[4], qpos[5], qpos[6])
+          : { roll: 0, pitch: 0, yaw: 0 };
+
+      rpyNow.roll = roll;
+      rpyNow.pitch = pitch;
+      rpyNow.yaw = yaw;
+      rpyNow.alt = z;
+    }
+  });
+ 
 
   parentContext.gui.open();
 }

@@ -275,8 +275,9 @@ export class MuJoCoDemo {
     // Camera indicator HUD
     this.cameraIndicator = document.createElement('div');
     this.cameraIndicator.style.position = 'absolute';
-    this.cameraIndicator.style.top = '10px';
-    this.cameraIndicator.style.right = '10px';
+    this.cameraIndicator.style.bottom = '10px';
+    this.cameraIndicator.style.left = '50%';
+    this.cameraIndicator.style.transform = 'translateX(-50%)';
     this.cameraIndicator.style.padding = '10px';
     this.cameraIndicator.style.backgroundColor = 'rgba(0,0,0,0.5)';
     this.cameraIndicator.style.color = 'white';

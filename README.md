@@ -4,6 +4,22 @@
   <a href="https://mujoco-wasm.vercel.app/"><img src="./thumbnail.png" href></a>
 </p>
 
+## 👥 Contributors
+
+<p align="center">
+  <a href="https://github.com/AdvayIyer">
+    <img src="https://github.com/AdvayIyer.png" width="60" height="60" style="border-radius: 50%; margin: 0 10px;" alt="AdvayIyer">
+  </a>
+  <a href="https://github.com/k1a11220">
+    <img src="https://github.com/k1a11220.png" width="60" height="60" style="border-radius: 50%; margin: 0 10px;" alt="k1a11220">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/AdvayIyer"><strong>@AdvayIyer</strong></a> •
+  <a href="https://github.com/k1a11220"><strong>@k1a11220</strong></a>
+</p>
+
 ## 🚁 Interactive Physics Simulation in Your Browser
 
 Experience the power of MuJoCo physics simulation directly in your web browser. This project provides real-time interactive simulation with drone control, robot dynamics, and advanced physics modeling using WebAssembly technology.

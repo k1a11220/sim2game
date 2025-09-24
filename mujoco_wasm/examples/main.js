@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import load_mujoco from "../dist/mujoco_wasm.js";
-import { OrbitControls } from "../node_modules/three/examples/jsm/controls/OrbitControls.js";
-import { GUI } from "../node_modules/three/examples/jsm/libs/lil-gui.module.min.js";
+import { OrbitControls } from "./libs/controls/OrbitControls.js";
+import { GUI } from "./libs/libs/lil-gui.module.min.js";
 import {
   downloadExampleScenesFolder,
   getPosition,
@@ -275,8 +275,9 @@ export class MuJoCoDemo {
     // Camera indicator HUD
     this.cameraIndicator = document.createElement('div');
     this.cameraIndicator.style.position = 'absolute';
-    this.cameraIndicator.style.top = '10px';
-    this.cameraIndicator.style.right = '10px';
+    this.cameraIndicator.style.bottom = '10px';
+    this.cameraIndicator.style.left = '50%';
+    this.cameraIndicator.style.transform = 'translateX(-50%)';
     this.cameraIndicator.style.padding = '10px';
     this.cameraIndicator.style.backgroundColor = 'rgba(0,0,0,0.5)';
     this.cameraIndicator.style.color = 'white';

@@ -19,12 +19,17 @@
       </default>
       <site group="5"/>
     </default>
+    <default class="tung">
+      <mesh scale="1 1 1"/>
+      <geom type="mesh" group="2" contype="0" conaffinity="0"/>
+    </default>
   </default>
 
   <asset>
     <texture name="X2_lowpoly_texture_SpinningProps_1024" type="2d" file="X2_lowpoly_texture_SpinningProps_1024.png"/>
     <material name="phong3SG" texture="X2_lowpoly_texture_SpinningProps_1024"/>
     <material name="invisible" rgba="0 0 0 0"/>
+    <material name="orange" rgba="1.0 0.5 0.0 1" specular="0.5" shininess="0.5"/>
 
     <mesh name="X2_lowpoly" class="x2" file="X2_lowpoly.obj"/>
   </asset>
@@ -49,6 +54,143 @@
       <site name="thrust2" pos="-.14 .18 .05"/>
       <site name="thrust3" pos=".14 .18 .08"/>
       <site name="thrust4" pos=".14 -.18 .08"/>
+    </body>
+
+    <!-- Ground obstacles -->
+    <!-- Tung approximation with primitives -->
+    <body name="tung_model" pos="8 -5 0.5">
+      <!-- Body -->
+      <geom type="box" size="0.15 0.1 0.3" material="orange" mass="5"/>
+      <!-- Head -->
+      <geom type="sphere" size="0.12" pos="0 0 0.35" material="orange" mass="2"/>
+      <!-- Arms -->
+      <geom type="capsule" size="0.04 0.15" fromto="-0.25 0 0.2 0.25 0 0.2" material="orange" mass="1"/>
+      <!-- Legs -->
+      <geom type="capsule" size="0.05 0.2" fromto="-0.08 0 -0.3 -0.08 0 -0.5" material="orange" mass="1"/>
+      <geom type="capsule" size="0.05 0.2" fromto="0.08 0 -0.3 0.08 0 -0.5" material="orange" mass="1"/>
+    </body>
+    <body name="ground_box2" pos="-7 6 0.15">
+      <geom type="box" size="0.2 0.4 0.15" rgba="0.2 0.8 0.2 1" mass="8"/>
+    </body>
+    <body name="ground_box3" pos="6 -8 0.35">
+      <geom type="box" size="0.4 0.2 0.35" rgba="0.2 0.2 0.8 1" mass="12"/>
+    </body>
+    <body name="ground_box4" pos="-9 -3 0.2">
+      <geom type="box" size="0.25 0.5 0.2" rgba="0.9 0.4 0.1 1" mass="9"/>
+    </body>
+    <body name="ground_box5" pos="5 7 0.3">
+      <geom type="box" size="0.35 0.25 0.3" rgba="0.1 0.4 0.9 1" mass="11"/>
+    </body>
+    <body name="ground_box6" pos="-4 -7 0.4">
+      <geom type="box" size="0.3 0.6 0.4" rgba="0.7 0.1 0.4 1" mass="14"/>
+    </body>
+    <body name="ground_box7" pos="10 2 0.18">
+      <geom type="box" size="0.4 0.3 0.18" rgba="0.3 0.8 0.5 1" mass="7"/>
+    </body>
+    <body name="ground_box8" pos="-6 0 0.22">
+      <geom type="box" size="0.28 0.28 0.22" rgba="0.6 0.3 0.8 1" mass="8"/>
+    </body>
+
+    <!-- Mid-air obstacles -->
+    <body name="air_box1" pos="4 9 0.8">
+      <geom type="box" size="0.25 0.25 0.25" rgba="1 0.5 0 1" mass="5"/>
+    </body>
+    <body name="air_box2" pos="-8 -2 1.2">
+      <geom type="box" size="0.15 0.3 0.2" rgba="0.8 0 0.8 1" mass="4"/>
+    </body>
+    <body name="air_box3" pos="9 -6 0.6">
+      <geom type="box" size="0.2 0.2 0.4" rgba="0 0.8 0.8 1" mass="6"/>
+    </body>
+    <body name="air_box4" pos="-5 8 1.1">
+      <geom type="box" size="0.3 0.2 0.15" rgba="0.9 0.7 0.2 1" mass="3"/>
+    </body>
+    <body name="air_box5" pos="7 3 1.4">
+      <geom type="box" size="0.18 0.35 0.25" rgba="0.2 0.9 0.4 1" mass="5"/>
+    </body>
+    <body name="air_box6" pos="-10 -5 0.9">
+      <geom type="box" size="0.22 0.22 0.3" rgba="0.5 0.2 0.9 1" mass="4"/>
+    </body>
+    <body name="air_box7" pos="2 -9 1.6">
+      <geom type="box" size="0.25 0.4 0.12" rgba="0.8 0.8 0.1 1" mass="4"/>
+    </body>
+    <body name="air_box8" pos="-3 5 1.3">
+      <geom type="box" size="0.35 0.15 0.2" rgba="0.1 0.8 0.6 1" mass="3"/>
+    </body>
+
+    <!-- Wall-like obstacles -->
+    <body name="wall1" pos="12 0 0.5">
+      <geom type="box" size="0.1 3 0.5" rgba="0.6 0.6 0.6 1" mass="20"/>
+    </body>
+    <body name="wall2" pos="0 -12 0.4">
+      <geom type="box" size="2.5 0.1 0.4" rgba="0.5 0.3 0.1 1" mass="15"/>
+    </body>
+    <body name="wall3" pos="-11 4 0.6">
+      <geom type="box" size="0.15 2.2 0.6" rgba="0.4 0.7 0.3 1" mass="18"/>
+    </body>
+    <body name="wall4" pos="6 11 0.45">
+      <geom type="box" size="1.8 0.12 0.45" rgba="0.8 0.4 0.6 1" mass="16"/>
+    </body>
+
+    <!-- Tall tower obstacles -->
+    <body name="tower1" pos="-8 7 0.8">
+      <geom type="box" size="0.2 0.2 0.8" rgba="0.9 0.9 0.1 1" mass="8"/>
+    </body>
+    <body name="tower2" pos="9 4 1.0">
+      <geom type="box" size="0.15 0.15 1.0" rgba="1 0.2 0.8 1" mass="6"/>
+    </body>
+    <body name="tower3" pos="-5 -9 1.2">
+      <geom type="box" size="0.18 0.18 1.2" rgba="0.3 0.9 0.7 1" mass="10"/>
+    </body>
+    <body name="tower4" pos="8 -4 0.9">
+      <geom type="box" size="0.25 0.25 0.9" rgba="0.7 0.3 0.9 1" mass="9"/>
+    </body>
+    <body name="tower5" pos="-10 1 1.1">
+      <geom type="box" size="0.16 0.16 1.1" rgba="0.9 0.6 0.2 1" mass="7"/>
+    </body>
+
+    <!-- Floating platform obstacles -->
+    <body name="platform1" pos="3 -10 1.5">
+      <geom type="box" size="0.5 0.5 0.1" rgba="0.3 0.7 0.3 1" mass="10"/>
+    </body>
+    <body name="platform2" pos="-9 4 1.8">
+      <geom type="box" size="0.4 0.6 0.08" rgba="0.7 0.3 0.7 1" mass="8"/>
+    </body>
+    <body name="platform3" pos="10 -7 2.0">
+      <geom type="box" size="0.6 0.4 0.09" rgba="0.2 0.5 0.8 1" mass="9"/>
+    </body>
+    <body name="platform4" pos="-4 10 1.7">
+      <geom type="box" size="0.45 0.35 0.07" rgba="0.8 0.6 0.4 1" mass="7"/>
+    </body>
+    <body name="platform5" pos="7 8 2.2">
+      <geom type="box" size="0.35 0.55 0.06" rgba="0.4 0.8 0.2 1" mass="6"/>
+    </body>
+
+    <!-- Corner obstacles -->
+    <body name="corner1" pos="11 10 0.3">
+      <geom type="box" size="0.4 0.4 0.3" rgba="0.9 0.2 0.3 1" mass="12"/>
+    </body>
+    <body name="corner2" pos="-11 -10 0.35">
+      <geom type="box" size="0.35 0.45 0.35" rgba="0.3 0.2 0.9 1" mass="13"/>
+    </body>
+    <body name="corner3" pos="11 -10 0.28">
+      <geom type="box" size="0.38 0.32 0.28" rgba="0.2 0.9 0.3 1" mass="11"/>
+    </body>
+    <body name="corner4" pos="-11 10 0.42">
+      <geom type="box" size="0.42 0.38 0.42" rgba="0.9 0.8 0.1 1" mass="15"/>
+    </body>
+
+    <!-- Random scattered obstacles -->
+    <body name="scatter1" pos="1.5 4.5 0.2">
+      <geom type="box" size="0.15 0.15 0.2" rgba="0.6 0.4 0.2 1" mass="2"/>
+    </body>
+    <body name="scatter2" pos="-3.2 -1.8 0.15">
+      <geom type="box" size="0.12 0.18 0.15" rgba="0.2 0.6 0.4 1" mass="1.5"/>
+    </body>
+    <body name="scatter3" pos="5.7 -2.1 0.25">
+      <geom type="box" size="0.2 0.12 0.25" rgba="0.4 0.2 0.6 1" mass="2.5"/>
+    </body>
+    <body name="scatter4" pos="-1.8 6.3 0.18">
+      <geom type="box" size="0.16 0.22 0.18" rgba="0.8 0.3 0.5 1" mass="2"/>
     </body>
   </worldbody>
 

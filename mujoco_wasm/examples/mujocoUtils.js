@@ -677,6 +677,14 @@ export async function loadSceneFromURL(mujoco, filename, parent) {
   
     parent.mujocoRoot = mujocoRoot;
 
+    if (parent && typeof parent.onSceneLoaded === 'function') {
+      try {
+        parent.onSceneLoaded(filename);
+      } catch (err) {
+        console.error('onSceneLoaded hook failed:', err);
+      }
+    }
+
     return [model, state, simulation, bodies, lights]
 }
 

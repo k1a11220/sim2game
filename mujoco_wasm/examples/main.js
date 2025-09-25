@@ -13,6 +13,7 @@ import {
 } from "./mujocoUtils.js";
 import { DragStateManager } from "./utils/DragStateManager.js";
 import { InputManager } from "./utils/InputManager.js";
+import { createControllerForScene } from "./controllers/index.js";
 
 const CONTROL_KEYS = new Set(["Space", "KeyZ", "KeyW", "KeyA", "KeyS", "KeyD"]);
 const ROLL_SIGNS = [-1, +1, +1, -1];
@@ -187,6 +188,9 @@ export class MuJoCoDemo {
     this.controlSmoothing = 0.25;
     this.thrustRange = { min: 0.0, max: 13.0 };
 
+    this.controller = null;
+    this.activeControllerType = null;
+
     this.container = document.createElement("div");
     document.body.appendChild(this.container);
 
@@ -323,17 +327,34 @@ export class MuJoCoDemo {
     console.log(`Switched to ${this.cameraMode} camera`);
   }
 
-  // Add the cycleCameraMode method here
-  cycleCameraMode() {
-    const modes = ['orbit', 'track', 'fpv'];
-    const currentIndex = modes.indexOf(this.cameraMode);
-    this.cameraMode = modes[(currentIndex + 1) % modes.length];
-    
-    this.controls.enabled = (this.cameraMode === 'orbit');
-    console.log(`Switched to ${this.cameraMode} camera`);
-
+  onSceneLoaded(sceneName) {
+    this.currentScene = sceneName;
+    this.setActiveController(sceneName);
   }
-  
+
+  setActiveController(sceneName) {
+    if (this.controller && typeof this.controller.dispose === 'function') {
+      try {
+        this.controller.dispose();
+      } catch (err) {
+        console.warn('Controller dispose failed:', err);
+      }
+    }
+
+    this.controller = createControllerForScene(sceneName ?? this.params?.scene, this) || null;
+    this.activeControllerType = this.controller?.type || null;
+
+    if (this.controller && typeof this.controller.onSceneActivated === 'function') {
+      try {
+        this.controller.onSceneActivated();
+      } catch (err) {
+        console.error('Controller activation failed:', err);
+      }
+    } else if (!this.controller && this.inputManager) {
+      this.inputManager.setEnabled(false);
+      this.inputManager.reset();
+    }
+  }
 
   async init() {
     console.log("=== INIT START ===");
@@ -526,29 +547,12 @@ export class MuJoCoDemo {
       this.frameCount++;
 
       while (this.mujoco_time < timeMS) {
-
-        if (this.params.pidEnabled) {
-          // Debug PID flow every 60 frames
-          if (this.frameCount % ftick === 0) {
-            console.log(
-              "PID enabled, calling updateTargetsFromKeys and updatePIDControl"
-            );
-            const zDbg = this.simulation.qpos?.[2];
-            console.log(
-              "Current state - z:",
-              zDbg,
-              "target alt:",
-              this.pidTarget.alt
-            );
+        if (this.controller && typeof this.controller.update === 'function') {
+          try {
+            this.controller.update(timestep, performance.now());
+          } catch (err) {
+            console.error('Controller update failed:', err);
           }
-          this.updateTargetsFromKeys(timestep);
-          this.updatePIDControl(performance.now());
-        } else {
-          // Debug manual control every 60 frames
-          if (this.frameCount % ftick === 0) {
-            console.log("PID disabled, using applySkydioKeyboardControl");
-          }
-          this.applySkydioKeyboardControl();
         }
 
         // Jitter the control state with gaussian random noise
@@ -840,6 +844,28 @@ export class MuJoCoDemo {
   }
 
   resetCtrlTargets() {
+    if (this.controller && typeof this.controller.reset === 'function') {
+      this.controller.reset();
+      return;
+    }
+
+    if (this.simulation && this.simulation.ctrl) {
+      this.ctrlTargets = new Float32Array(this.simulation.ctrl.length);
+    } else {
+      this.ctrlTargets = new Float32Array(0);
+    }
+
+    this.thrustIndices = [];
+    this.skydioControlConfigured = false;
+    this.thrustRange = { min: 0.0, max: 13.0 };
+
+    if (this.inputManager) {
+      this.inputManager.reset();
+      this.inputManager.setEnabled(false);
+    }
+  }
+
+  resetSkydioControlTargets() {
     if (this.simulation && this.simulation.ctrl) {
       this.ctrlTargets = new Float32Array(this.simulation.ctrl.length);
     } else {
@@ -851,13 +877,6 @@ export class MuJoCoDemo {
     if (this.inputManager) {
       this.inputManager.reset();
     }
-  }
-
-  shouldApplySkydioControl() {
-    return (
-      typeof this.params.scene === "string" &&
-      this.params.scene.includes("skydio_x2")
-    );
   }
 
   configureSkydioActuators() {
@@ -924,12 +943,8 @@ export class MuJoCoDemo {
 
   applySkydioKeyboardControl() {
     const manager = this.inputManager;
-    const active = this.shouldApplySkydioControl();
     if (manager) {
-      manager.setEnabled(active);
-    }
-    if (!active) {
-      return;
+      manager.setEnabled(true);
     }
     if (!this.skydioControlConfigured && !this.configureSkydioActuators()) {
       return;
@@ -976,11 +991,6 @@ export class MuJoCoDemo {
   }
 
   updatePIDControl(nowMs) {
-    if (!this.shouldApplySkydioControl()) {
-      console.log("Not Skydio scene, skipping PID");
-      return;
-    }
-
     if (!this.skydioControlConfigured && !this.configureSkydioActuators()) {
       console.warn("Failed to configure Skydio actuators");
       return;

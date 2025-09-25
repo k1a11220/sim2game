@@ -32,6 +32,7 @@ export function setupGUI(parentContext) {
   let reload = reloadFunc.bind(parentContext);
   parentContext.gui.add(parentContext.params, 'scene', {
     "Skydio X2": "skydio_x2/scene.xml",
+    "Go1 Robot": "unitree_go1/scene.xml",
     "Humanoid": "humanoid.xml",
     "Cassie": "agility_cassie/scene.xml",
     "Hammock": "hammock.xml",

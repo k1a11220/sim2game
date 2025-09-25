@@ -26,7 +26,16 @@ export function setupGUI(parentContext) {
     // TODO: Use free camera parameters from MuJoCo
     parentContext.camera.position.set(2.0, 1.7, 1.7);
     parentContext.controls.target.set(0, 0.7, 0);
-    parentContext.controls.update(); });
+    parentContext.controls.update();
+
+    // Auto-load home keyframe for Go1 robot
+    if (params.scene && params.scene.includes('unitree_go1') && model.nkey > 0) {
+      // Load the "home" keyframe (index 0)
+      simulation.qpos.set(model.key_qpos.slice(0, model.nq));
+      simulation.ctrl.set(model.key_ctrl.slice(0, model.nu));
+      console.log('Go1 home position loaded');
+    }
+  });
 
   // Add scene selection dropdown.
   let reload = reloadFunc.bind(parentContext);
